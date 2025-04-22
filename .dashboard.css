@@ -1,0 +1,40 @@
+.dashboard {
+    padding: 2rem;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    background-color: #FFFFE0;
+    }
+    
+    .header {
+       background-color: #FFFFE0;
+       padding: 20px;
+       box-shadow: 0 2px 5px rgba (0, 0, 0, 0.1);
+       width: 100%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+    }
+
+
+    h1 { font-size: 24;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+    }
+
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #FFFFE0;
+    }
+
+    .main-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .container {
+        dispplay: flex;
+        height: 100vh;
+    }
+
