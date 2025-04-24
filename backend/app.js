@@ -5,10 +5,16 @@ const db = require('./db');
 require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.JWT_SECRET || 'secret';
+
 app.use(cors());
 app.use(express.json());
 
-const SECRET_KEY = process.env.JWT_SECRET || 'secret';
+app.get('/', (req, res) => {
+  res.send('Student Dashboard API is running!');
+});
+
 
 // Middleware
 const authenticateToken = (req, res, next) => {
