@@ -5,12 +5,12 @@ import StudentDashboard from './StudentDashboard_index';
 
 function App () {
   return (
-    <BrowserRouter>
+    <Router>
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/dashboard" element={<StudentDashboard />} />
     </Routes>
-  </BrowserRouter>
+  </Router>
   );
 }
 
