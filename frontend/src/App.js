@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LoginPage from './LoginPage';
 import StudentDashboard from './StudentDashboard_index';
 
-function App () {
+function App() {
   return (
     <Router>
     <Routes>
