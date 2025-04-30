@@ -1,13 +1,11 @@
-var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-var cors = require('cors');
-var jwt = require('jsonwebtoken');
-var bcrypt = require('bcryptjs');
-var db = require('./db');
-require('dotenv').config();
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const db = require('./db');
+require('dotenv').config(); // Load environment variables
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -15,77 +13,65 @@ var enrollmentRouter = require('./routes/enrollment');
 
 var app = express();
 
-// CORS setup
-app.use(cors({
-  origin: 'http://localhost:3001', // Frontend URL (change as needed)
-  methods: ['GET', 'POST'],
-}));
-
-// view engine setup (if using views, optional for REST API)
+// view engine setup (you can remove this if you're not using views)
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-// Middleware setup
+// Middleware
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(cors()); // Enable Cross-Origin Resource Sharing
 
 // Routes
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/enrollment', enrollmentRouter);
 
-// Catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+// Set up a route for the root path to verify the server is running
+app.get('/', (req, res) => {
+  res.send('Welcome to the Student Dashboard API');
 });
 
-// Error handler
-app.use(function(err, req, res, next) {
-  // Set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // Render the error page
-  res.status(err.status || 500);
-  res.render('error');
+// MySQL Connection
+db.connect(err => {
+  if (err) {
+    console.error('MySQL connection error:', err);
+    process.exit(1); // Exit process if DB connection fails
+  }
+  console.log('MySQL connected!');
 });
 
-// JWT Authentication middleware
+// Authentication Middleware (example)
 const authenticateToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1]; // Bearer token
-  if (!token) return res.sendStatus(401); // Unauthorized if no token
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.sendStatus(401);
   jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, user) => {
-    if (err) return res.sendStatus(403); // Forbidden if token invalid
+    if (err) return res.sendStatus(403);
     req.user = user;
     next();
   });
 };
 
-// Login route example (you can move this to a separate `routes/users.js` later)
-app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-  db.query('SELECT * FROM students WHERE email = ?', [email], (err, result) => {
-    if (err) return res.status(500).json({ message: 'Database error' });
-    if (result.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
-
-    // Compare hashed password
-    bcrypt.compare(password, result[0].password, (err, match) => {
-      if (err || !match) return res.status(401).json({ message: 'Invalid credentials' });
-
-      const token = jwt.sign({ studentId: result[0].id }, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' });
-      res.json({ token });
-
-    });
-  });
+// Error handling middleware (if no route is found)
+app.use(function(req, res, next) {
+  res.status(404).send('Route not found');
 });
 
- // Ensure the app is listening to port 3000
-const PORT = process.env.PORT || 3000; // Default to 3000 if not set in .env
+// Error handler middleware
+app.use(function(err, req, res, next) {
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  res.status(err.status || 500).send('Internal Server Error');
+});
+
+// Listen on port 3000 or from environment variables
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 module.exports = app;
+
