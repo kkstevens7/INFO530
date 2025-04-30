@@ -1,65 +1,84 @@
-const express = require('express');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const db = require('./db');
+var createError = require('http-errors');
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
+var cors = require('cors');
+var jwt = require('jsonwebtoken');
+var bcrypt = require('bcryptjs');
+var db = require('./db');
 require('dotenv').config();
 
-const app = express();
-const SECRET_KEY = process.env.JWT_SECRET || 'secret';
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/users');
+var enrollmentRouter = require('./routes/enrollment');
 
-app.use(cors());
+var app = express();
+
+// CORS setup
+app.use(cors({
+  origin: 'http://localhost:3001', // Frontend URL (change as needed)
+  methods: ['GET', 'POST'],
+}));
+
+// view engine setup (if using views, optional for REST API)
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
+
+// Middleware setup
+app.use(logger('dev'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-  res.send('Student Dashboard API is running!');
+// Routes
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/enrollment', enrollmentRouter);
+
+// Catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  next(createError(404));
 });
 
+// Error handler
+app.use(function(err, req, res, next) {
+  // Set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-// Middleware
+  // Render the error page
+  res.status(err.status || 500);
+  res.render('error');
+});
+
+// JWT Authentication middleware
 const authenticateToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  if (!token) return res.sendStatus(401);
-  jwt.verify(token, SECRET_KEY, (err, user) => {
-    if (err) return res.sendStatus(403);
+  const token = req.headers['authorization']?.split(' ')[1]; // Bearer token
+  if (!token) return res.sendStatus(401); // Unauthorized if no token
+  jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, user) => {
+    if (err) return res.sendStatus(403); // Forbidden if token invalid
     req.user = user;
     next();
   });
 };
 
-// Login
+// Login route example (you can move this to a separate `routes/users.js` later)
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-  db.query(
-    'SELECT * FROM students WHERE email = ? AND password = ?',
-    [email, password],
-    (err, result) => {
-      if (err) return res.sendStatus(500);
-      if (result.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
-      const token = jwt.sign({ studentId: result[0].id }, SECRET_KEY, { expiresIn: '2h' });
-      res.json({ token });
-    }
-  );
-});
+  db.query('SELECT * FROM students WHERE email = ?', [email], (err, result) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (result.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
 
-// Get student info
-app.get('/api/student', authenticateToken, (req, res) => {
-  db.query('SELECT first_name, last_name FROM students WHERE id = ?', [req.user.studentId], (err, result) => {
-    if (err) return res.sendStatus(500);
-    res.json(result[0]);
+    // Compare hashed password
+    bcrypt.compare(password, result[0].password, (err, match) => {
+      if (err || !match) return res.status(401).json({ message: 'Invalid credentials' });
+
+      const token = jwt.sign({ studentId: result[0].id }, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' });
+      res.json({ token });
+    });
   });
 });
 
-// Get attendance
-app.get('/api/attendance', authenticateToken, (req, res) => {
-  db.query(
-    'SELECT course_name, semester, start_date, end_date, total_classes, attended FROM attendances WHERE student_id = ?',
-    [req.user.studentId],
-    (err, result) => {
-      if (err) return res.sendStatus(500);
-      res.json(result);
-    }
-  );
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log('Server running on port ${PORT}'));
+module.exports = app;
