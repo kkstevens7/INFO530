@@ -78,13 +78,14 @@ app.post('/api/login', (req, res) => {
       const token = jwt.sign({ studentId: result[0].id }, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' });
       res.json({ token });
 
+    });
+  });
+});
+
  // Ensure the app is listening to port 3000
 const PORT = process.env.PORT || 3000; // Default to 3000 if not set in .env
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
-});
-    });
-  });
 });
 
 module.exports = app;
